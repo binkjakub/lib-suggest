@@ -1,0 +1,9 @@
+### Development tools ###
+bump2version
+pytest
+pytest-alphamoon
+pytest-cov
+pytest-flakes
+pytest-isort
+pytest-mypy
+pytest-pycodestyle
