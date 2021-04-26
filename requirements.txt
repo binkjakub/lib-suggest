@@ -1,6 +1,7 @@
 ### Libraries and frameworks ###
+click
 dvc[gdrive]
-PyGithub
 requirements-parser
 srsly
 tqdm
+pygithub==1.55
