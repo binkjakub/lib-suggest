@@ -1,2 +1,6 @@
 ### Libraries and frameworks ###
 dvc[gdrive]
+PyGithub
+requirements-parser
+srsly
+tqdm
