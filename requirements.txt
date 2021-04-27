@@ -1,9 +1,11 @@
 ### Libraries and frameworks ###
-click
+click==7.1.2
 dvc[gdrive]
 requirements-parser
-srsly
-tqdm
+srsly==2.4.1
+tqdm==4.60.0
 pygithub==1.55
 pandas==1.2.4
 seaborn==0.11.1
+matplotlib==3.4.1
+scikit-learn==0.24.1

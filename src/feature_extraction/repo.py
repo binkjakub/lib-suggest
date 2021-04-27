@@ -8,16 +8,11 @@ import srsly
 from github import Repository, UnknownObjectException
 from tqdm import tqdm
 
-from src.defaults import DATASET_PATH
+from src.defaults import DATASET_PATH, REPOS
 
 
 def extract_batch(batch: list[Repository], store_dir: Path = DATASET_PATH, n_jobs: int = 1) -> None:
     store_dir.mkdir(exist_ok=True)
-    # name = hashlib.sha1(
-    #     ' '.join([features['full_name'] for features in to_store]).encode()).hexdigest()
-    # name += '.json'
-    name = 'scraped_repos.jsonl'
-    # to_store = []
 
     with multiprocessing.Pool(n_jobs) as pool:
         p_bar = tqdm(
@@ -27,7 +22,7 @@ def extract_batch(batch: list[Repository], store_dir: Path = DATASET_PATH, n_job
             total=len(batch),
         )
         status = {'dropped': 0, 'extracted': 0}
-        with open(store_dir / name, 'a+') as file:
+        with open(REPOS, 'a+') as file:
 
             for extracted in p_bar:
                 if extracted is not None:
@@ -48,8 +43,12 @@ def safe_extract_repo(repo: Repository) -> Optional[dict[str, Any]]:
 
 def extract_repo(repo: Repository) -> Optional[dict[str, Any]]:
     repo_requirements = _get_requirements_names(repo)
-    if repo_requirements is None:
+    if repo_requirements is None or len(repo_requirements) == 0:
         return None
+    else:
+        repo_requirements = list(set(lib for lib in repo_requirements if lib is not None))
+        if not repo_requirements:
+            return None
 
     result = OrderedDict()
     result['full_name'] = repo.full_name
@@ -68,10 +67,10 @@ def extract_repo(repo: Repository) -> Optional[dict[str, Any]]:
     result['is_master_protected'] = repo.get_branch("master").protected
     result['n_pr_open'] = repo.get_pulls(state='open', base='master').totalCount
     result['n_pr_closed'] = repo.get_pulls(state='closed', base='master').totalCount
-    result['n_pr_all'] = repo.get_pulls(state='all', base='master').totalCount
+    result['n_pr_all'] = result['n_pr_open'] + result['n_pr_closed']
     result['n_milestones_open'] = repo.get_milestones(state='open').totalCount
     result['n_milestones_closed'] = repo.get_milestones(state='closed').totalCount
-    result['n_milestones_all'] = repo.get_milestones(state='all').totalCount
+    result['n_milestones_all'] = result['n_milestones_open'] + result['n_milestones_closed']
     result['readme_text'] = _content_text(repo, 'README.md')
     result['repo_requirements'] = repo_requirements
     return result
