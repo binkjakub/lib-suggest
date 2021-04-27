@@ -13,8 +13,7 @@ from src.feature_extraction.repo import extract_batch
 
 
 @click.command()
-@click.option('--access-token', type=click.STRING,
-              default='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',
+@click.option('--access-token', type=click.STRING, default=None,
               help="Access token generated with GitHub account or None in case of using public API"
                    "(limits are stricter in case of public API)")
 @click.option('--query', type=click.STRING, default="language:python")
