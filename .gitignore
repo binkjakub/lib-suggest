@@ -164,4 +164,3 @@ user_settings.py
 
 # kernprof / line_profiler files
 *.lprof
-/storage
