@@ -18,7 +18,7 @@ from src.feature_extraction.repo import extract_batch
                    "(limits are stricter in case of public API)")
 @click.option('--query', type=click.STRING, default="language:python")
 @click.option('--start-date', type=click.DateTime(formats=["%Y-%m-%d"]), default="2020-01-01")
-@click.option('--end-date', type=click.DateTime(formats=["%Y-%m-%d"]), default="2020-01-07")
+@click.option('--end-date', type=click.DateTime(formats=["%Y-%m-%d"]), default="2021-05-01")
 @click.option('--step-day', type=click.INT, default=1)
 def crawl_github_repos(access_token: Optional[str], query: str, start_date: datetime,
                        end_date: datetime, step_day: int):
