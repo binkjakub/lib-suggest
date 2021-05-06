@@ -23,7 +23,7 @@ from src.feature_extraction.repo import extract_batch
 @click.option('--query', type=click.STRING, default="language:python")
 @click.option('--start-date', type=click.DateTime(formats=["%Y-%m-%d"]), default="2017-01-01")
 @click.option('--end-date', type=click.DateTime(formats=["%Y-%m-%d"]), default="2020-01-07")
-@click.option('--step-day', type=click.INT, default=10)
+@click.option('--step-day', type=click.INT, default=3)
 @click.option('--daily-limit', type=click.INT, default=10)
 @click.option('--n-jobs', type=click.INT, default=1)
 @click.option('--repeat-span', type=click.INT, default=30)
