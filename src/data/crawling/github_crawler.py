@@ -1,11 +1,13 @@
 import time
 from datetime import date, timedelta
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from github import Github
 from github.GithubException import RateLimitExceededException, UnknownObjectException
 from github.PaginatedList import PaginatedList
 from github.Repository import Repository
+
+from src.feature_extraction.repo import extract_repo
 
 
 class GithubCrawler:
@@ -13,6 +15,10 @@ class GithubCrawler:
 
     def __init__(self, login_or_token: Optional[str] = None, password: Optional[str] = None):
         self.g = Github(login_or_token=login_or_token, password=password)
+
+    def crawl_extract_repository(self, repo_name: str) -> Optional[dict[str, Any]]:
+        repo = self.g.get_repo(repo_name)
+        return extract_repo(repo)
 
     def search_repos(self, query, **kwargs) -> Union[Repository, PaginatedList]:
         return self.g.search_repositories(query, **kwargs)
