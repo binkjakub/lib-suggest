@@ -8,10 +8,10 @@ import srsly
 from github import Repository, UnknownObjectException
 from tqdm import tqdm
 
-from src.defaults import DATASET_PATH, REPOS
+from src.defaults import RAW_DATA, REPOS
 
 
-def extract_batch(batch: list[Repository], store_dir: Path = DATASET_PATH, n_jobs: int = 1) -> None:
+def extract_batch(batch: list[Repository], store_dir: Path = RAW_DATA, n_jobs: int = 1) -> None:
     store_dir.mkdir(exist_ok=True)
 
     with multiprocessing.Pool(n_jobs) as pool:

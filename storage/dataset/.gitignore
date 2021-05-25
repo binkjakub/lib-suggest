@@ -1,2 +1,3 @@
-/scraped_repos.jsonl
-/scraped_repos_albert.jsonl
+/repo_features.csv
+/test_interactions.csv
+/train_interaction.csv

@@ -1,0 +1,4 @@
+outs:
+- md5: f01d32d4c92b4cf658e47fe0c257d3a4
+  size: 454943
+  path: train_interaction.csv

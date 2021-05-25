@@ -1,0 +1,4 @@
+outs:
+- md5: 48bd55be462c7097b160aee008033be3
+  size: 16589476
+  path: scraped_repos_djaniak.jsonl
