@@ -9,7 +9,7 @@ Authors: Jakub Binkowski, Denis Janiak, Albert Sawczyn
 
 To run lib-suggest recommendation interface, simply type following command:
 
-## Scraping
+## Application
 ```bash
 GITHUB_TOKEN=<your_github_access_token>; streamlit run recommend.py
 ```
