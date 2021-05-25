@@ -1,0 +1,4 @@
+outs:
+- md5: 2ce55c11d4e6bc6246abdfa76d024b6a
+  size: 32335
+  path: test_interactions.csv
