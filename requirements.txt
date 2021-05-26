@@ -18,3 +18,5 @@ wandb==0.10.30
 pytorch-lightning==1.3.5
 torchmetrics==0.3.2
 torch==1.8.1
+lightfm
+scipy
