@@ -20,3 +20,4 @@ torchmetrics==0.3.2
 torch==1.8.1
 lightfm
 scipy
+numpy==1.20.2
