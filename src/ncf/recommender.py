@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Dict
+from typing import Any, Dict
 
 import torch
 from pytorch_lightning import LightningModule
@@ -21,6 +21,9 @@ class RecommenderSystem(LightningModule, ABC):
         })
         self.train_metrics = metrics.clone(prefix='train/')
         self.val_metrics = metrics.clone(prefix='val/')
+
+        self.repo_names = None
+        self.lib_names = None
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
@@ -54,15 +57,27 @@ class RecommenderSystem(LightningModule, ABC):
         return repos, libs, ratings, user_features, ratings_pred
 
     def training_epoch_end(self, outputs):
-        self._aggregate_and_log_metrics(self.train_metrics)
+        self._aggregate_and_log_metrics(self.train_metrics, 'train')
 
     def validation_epoch_end(self, outputs):
-        self._aggregate_and_log_metrics(self.val_metrics)
+        self._aggregate_and_log_metrics(self.val_metrics, 'val')
+
+    def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        self.repo_names = checkpoint['repo_names']
+        self.lib_names = checkpoint['lib_names']
+
+    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        checkpoint['repo_names'] = self.repo_names = self.datamodule.repo_names
+        checkpoint['lib_names'] = self.lib_names = self.datamodule.lib_names
 
     def _aggregate_and_log_metrics(self,
                                    metrics: MetricCollection,
+                                   subset_name: str,
                                    progress_bar: bool = False) -> dict:
         metric_values = metrics.compute()
         metrics.reset()
         self.log_dict(metric_values, prog_bar=progress_bar)
+        self.log(f'{subset_name}_ndcg', metric_values[f'{subset_name}/NDCG@{self.k_eval}'],
+                 on_epoch=True, on_step=False)
+
         return metric_values

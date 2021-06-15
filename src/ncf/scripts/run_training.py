@@ -2,6 +2,7 @@ from typing import Any
 
 import click
 from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import LightningLoggerBase, WandbLogger
 
 from src.ncf.data import LibRecommenderDM
@@ -36,17 +37,29 @@ def run_ncf_training(log_dir: str, experiment_name: str, seed: int):
     config = _compute_dimensions(config)
     seed_everything(seed)
 
-    book_crossing_dm = LibRecommenderDM(config)
+    lib_recommender_dm = LibRecommenderDM(config)
     model = _get_model(config)
+    model.datamodule = lib_recommender_dm
 
-    experiment_name = f'{type(model).__name__}__{experiment_name}'
+    model_name = type(model).__name__
+    checkpoint_template = f'{model_name}' + '-{epoch:02d}-{train_ndcg:.2f}-{val_ndcg:.2f}'
+    monitor_metric = 'val_ndcg'
+    early_stopping = EarlyStopping(monitor=monitor_metric,
+                                   min_delta=0.01,
+                                   mode='max')
+    checkpoint = ModelCheckpoint(filename=checkpoint_template,
+                                 monitor=monitor_metric,
+                                 save_top_k=2)
+
+    experiment_name = f'{model_name}__{experiment_name}'
     trainer = Trainer(
         max_epochs=config['max_epochs'],
         logger=_get_loggers(log_dir, experiment_name),
         default_root_dir=log_dir,
         deterministic=True,
+        callbacks=[checkpoint, early_stopping],
     )
-    trainer.fit(model, datamodule=book_crossing_dm)
+    trainer.fit(model, datamodule=lib_recommender_dm)
 
 
 def _compute_dimensions(config: dict[str, Any]) -> dict[str, Any]:
@@ -72,14 +85,14 @@ def _get_loggers(log_dir: str, experiment_name: str) -> LightningLoggerBase:
     return WandbLogger(experiment_name, log_dir, project='lib_suggest_ncf', log_model=True)
 
 
-def _get_model(config: dict[str, Any]) -> RecommenderSystem:
+def _get_model(config: dict[str, Any], *args, **kwargs) -> RecommenderSystem:
     name = config['model']
     if name == 'gmf':
-        return GMF(config)
+        return GMF(config, *args, **kwargs)
     elif name == 'mlp':
-        return MLP(config)
+        return MLP(config, *args, **kwargs)
     elif name == 'neumf':
-        return NeuMF(config)
+        return NeuMF(config, *args, **kwargs)
     else:
         raise ValueError(f"Invalid model name: {name}")
 

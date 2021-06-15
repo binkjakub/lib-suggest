@@ -33,8 +33,8 @@ class UserEmbedding(nn.Module):
 class GMF(RecommenderSystem):
     """Generalized Matrix Factorization"""
 
-    def __init__(self, config: dict[str, Any]):
-        super(GMF, self).__init__(config)
+    def __init__(self, config: dict[str, Any], *args, **kwargs):
+        super(GMF, self).__init__(config, *args, **kwargs)
 
         self.embedding_user = UserEmbedding(self.hparams.num_repos,
                                             self.hparams.latent_dim_mf,
@@ -62,8 +62,8 @@ class GMF(RecommenderSystem):
 class MLP(RecommenderSystem):
     """Multilayer Perceptron model."""
 
-    def __init__(self, config):
-        super(MLP, self).__init__(config)
+    def __init__(self, config, *args, **kwargs):
+        super(MLP, self).__init__(config, *args, **kwargs)
 
         self.embedding_user = UserEmbedding(self.hparams.num_repos,
                                             self.hparams.embedding_dim,
@@ -101,10 +101,10 @@ class MLP(RecommenderSystem):
 
 
 class NeuMF(RecommenderSystem):
-    def __init__(self, config: dict[str, Any]):
-        super(NeuMF, self).__init__(config)
-        self._gmf = GMF(config)
-        self._mlp = MLP(config)
+    def __init__(self, config: dict[str, Any], *args, **kwargs):
+        super(NeuMF, self).__init__(config, *args, **kwargs)
+        self._gmf = GMF(config, *args, **kwargs)
+        self._mlp = MLP(config, *args, **kwargs)
 
         predictive_factors = self.hparams.layers[-1] + self.hparams.latent_dim_mf
         self.affine_output = nn.Linear(in_features=predictive_factors, out_features=1)

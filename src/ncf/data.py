@@ -65,14 +65,14 @@ class LibRecommenderDM(LightningDataModule):
         self.train_ratings: Optional[RepoLibDataset] = None
         self.test_ratings: Optional[RepoLibDataset] = None
 
-        self.lib_index: Optional[np.ndarray] = None
-        self.repo_index: Optional[np.ndarray] = None
+        self.repo_names: Optional[np.ndarray] = None
+        self.lib_names: Optional[np.ndarray] = None
 
     def prepare_data(self, *args, **kwargs):
         pass
 
     def setup(self, stage: Optional[str] = None):
-        repo_feats, train_interactions, test_interactions, self.repo_index, self.lib_index = \
+        repo_feats, train_interactions, test_interactions, self.repo_names, self.lib_names = \
             load_train_test_interactions()
 
         self._log_dataset_stats(train_interactions, "Train")
@@ -139,7 +139,7 @@ class LibRecommenderDM(LightningDataModule):
                              repo_feats: pd.DataFrame,
                              repos: torch.Tensor) -> torch.Tensor:
         repo_feats = repo_feats.set_index('full_name')
-        repo_names = self.repo_index[repos.long()]
+        repo_names = self.repo_names[repos.long()]
         repo_feats = repo_feats.loc[repo_names, self.FEATURE_NAMES].values.astype(float)
         repo_feats = torch.tensor(repo_feats, dtype=torch.float)
         assert len(repo_feats) == len(repos)
