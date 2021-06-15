@@ -4,6 +4,7 @@ from typing import Optional, Union
 
 import pandas as pd
 from pandas import CategoricalDtype
+from pandas.core.dtypes.base import ExtensionDtype
 
 from src.defaults import RAW_DATA, TEST_DS, TRAIN_DS
 
@@ -40,8 +41,9 @@ def load_all_datasets(path: str = RAW_DATA,
 
 
 def load_train_test_interactions(train_path: PathLike = TRAIN_DS,
-                                 test_path: PathLike = TEST_DS
-                                 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+                                 test_path: PathLike = TEST_DS,
+                                 ) -> tuple[pd.DataFrame, pd.DataFrame,
+                                            ExtensionDtype, ExtensionDtype]:
     train_interactions, test_interactions = pd.read_csv(train_path), pd.read_csv(test_path)
 
     train_interactions['rating'] = 1
@@ -61,4 +63,4 @@ def load_train_test_interactions(train_path: PathLike = TRAIN_DS,
     assert train_interactions.columns.tolist() == ['full_name', 'repo_requirements', 'rating']
     assert test_interactions.columns.tolist() == ['full_name', 'repo_requirements', 'rating']
 
-    return train_interactions, test_interactions
+    return train_interactions, test_interactions, lib_dtype, repo_dtype

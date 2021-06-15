@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 import torch
+from pandas.core.dtypes.base import ExtensionDtype
 from pytorch_lightning import LightningDataModule
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
@@ -13,13 +14,13 @@ from src.data.loader import load_train_test_interactions
 class RepoLibDataset(Dataset):
     """Wrapper, convert <user, item, rating> Tensor into Pytorch Dataset"""
 
-    def __init__(self, user_tensor: Tensor, item_tensor: Tensor, target_tensor: Tensor):
+    def __init__(self, repo_tensor: Tensor, lib_tensor: Tensor, target_tensor: Tensor):
         """
         args:
             target_tensor: torch.Tensor, the corresponding rating for <user, item> pair
         """
-        self.repo_tensor = user_tensor
-        self.lib_tensor = item_tensor
+        self.repo_tensor = repo_tensor
+        self.lib_tensor = lib_tensor
         self.target_tensor = target_tensor
 
     def __getitem__(self, index):
@@ -29,75 +30,49 @@ class RepoLibDataset(Dataset):
         return self.repo_tensor.size(0)
 
 
-class RepoLibEvaluationDataset(Dataset):
-    """Wrapper for evaluation data, as recommendations are evaluated with 100 negative samples:
-    Data should contain:
-        - examples of positive interactions
-        - subsample of negative interactions (preferably 100, as in NCF publication)
-    """
-
-    def __init__(self, test_users: Tensor, test_items: Tensor, negative_users: Tensor,
-                 negative_items: Tensor):
-        self._repos_idx = torch.unique(test_users)
-
-        self.test_repos = test_users
-        self.test_libs = test_items
-        self.negative_repos = negative_users
-        self.negative_libs = negative_items
-
-    def __getitem__(self, repo_index):
-        positive_items = self.test_libs[self.test_repos == repo_index]
-        negative_items = self.negative_libs[self.negative_repos == repo_index]
-        total_len = len(positive_items) + len(negative_items)
-
-        repos = torch.cat([positive_items, negative_items])
-        libs = torch.full((total_len,), repo_index, dtype=torch.int)
-        ratings = torch.tensor(([1] * len(positive_items) + ([0] * len(negative_items))),
-                               dtype=torch.int)
-        return libs, repos, ratings
-
-    def __len__(self):
-        return self._repos_idx.size(0)
-
-
 class LibRecommenderDM(LightningDataModule):
-    """Datamodule responsible for preparation of dataset to be used in training of NCF model."""
+    """Datamodule responsible for serving dataset to be used in training of NCF model."""
+
+    VAL_BATCH_SIZE = 512
 
     def __init__(self, config: Dict):
         super().__init__()
 
         self._num_negatives = config['num_negatives']
         self._batch_size = config['batch_size']
-
         self._num_workers = config['num_workers']
-        # self._num_repos, self._num_libs = config['num_repos'], config['num_libs']
 
-        self.train_ratings = None
-        self.test_ratings = None
+        self.train_ratings: Optional[RepoLibDataset] = None
+        self.test_ratings: Optional[RepoLibDataset] = None
+
+        self.lib_index: Optional[ExtensionDtype] = None
+        self.repo_index: Optional[ExtensionDtype] = None
 
     def prepare_data(self, *args, **kwargs):
         pass
 
     def setup(self, stage: Optional[str] = None):
-        train_interactions, test_interactions = load_train_test_interactions()
+        train_test_raw_data = load_train_test_interactions()
+        train_interactions, test_interactions, self.lib_index, self.repo_index = train_test_raw_data
 
         self._log_dataset_stats(train_interactions, "Train")
         self._log_dataset_stats(test_interactions, "Test")
 
         negatives = self._sample_negatives(train_interactions)
-        self.train_ratings = self._build_train_dataset(train_interactions, negatives)
-        self.test_ratings = self._build_test_dataset(test_interactions, negatives)
+        self.train_ratings = self._build_dataset(train_interactions, negatives)
+        self.test_ratings = self._build_dataset(test_interactions, negatives)
 
     def train_dataloader(self) -> Any:
         return DataLoader(self.train_ratings, batch_size=self._batch_size, shuffle=True,
                           num_workers=self._num_workers)
 
     def val_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
-        return DataLoader(self.test_ratings, batch_size=1, shuffle=False,
+        return DataLoader(self.test_ratings, batch_size=self.VAL_BATCH_SIZE, shuffle=False,
                           num_workers=self._num_workers)
 
-    def _build_train_dataset(self, ratings: pd.DataFrame,
-                             negatives: pd.DataFrame) -> RepoLibDataset:
+    def _build_dataset(self,
+                       ratings: pd.DataFrame,
+                       negatives: pd.DataFrame) -> RepoLibDataset:
         """Creates training data."""
         train_ratings = pd.merge(ratings, negatives[['full_name', 'negative_items']],
                                  on='full_name')
@@ -119,30 +94,6 @@ class LibRecommenderDM(LightningDataModule):
             torch.tensor(users, dtype=torch.int),
             torch.tensor(items, dtype=torch.int),
             torch.tensor(ratings, dtype=torch.float),
-        )
-
-    def _build_test_dataset(self,
-                            test_ratings: pd.DataFrame,
-                            negatives: pd.DataFrame) -> RepoLibEvaluationDataset:
-        """Creates evaluation data."""
-        test_ratings = pd.merge(test_ratings,
-                                negatives[['full_name', 'test_negatives']],
-                                on='full_name')
-
-        test_users, test_items, negative_users, negative_items = [], [], [], []
-
-        for _, row in test_ratings.iterrows():
-            test_users.append(int(row['full_name']))
-            test_items.append(int(row['repo_requirements']))
-            for i in range(len(row['test_negatives'])):
-                negative_users.append(int(row['full_name']))
-                negative_items.append(int(row['test_negatives'][i]))
-
-        return RepoLibEvaluationDataset(
-            torch.tensor(test_users, dtype=torch.int),
-            torch.tensor(test_items, dtype=torch.int),
-            torch.tensor(negative_users, dtype=torch.int),
-            torch.tensor(negative_items, dtype=torch.int),
         )
 
     def _sample_negatives(self, ratings: pd.DataFrame) -> pd.DataFrame:
