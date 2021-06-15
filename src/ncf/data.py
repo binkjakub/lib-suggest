@@ -1,9 +1,9 @@
 import random
 from typing import Any, Dict, List, Optional, Union
 
+import numpy as np
 import pandas as pd
 import torch
-from pandas.core.dtypes.base import ExtensionDtype
 from pytorch_lightning import LightningDataModule
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
@@ -14,17 +14,33 @@ from src.data.loader import load_train_test_interactions
 class RepoLibDataset(Dataset):
     """Wrapper, convert <user, item, rating> Tensor into Pytorch Dataset"""
 
-    def __init__(self, repo_tensor: Tensor, lib_tensor: Tensor, target_tensor: Tensor):
+    def __init__(self,
+                 repo_tensor: Tensor,
+                 lib_tensor: Tensor,
+                 target_tensor: Tensor,
+                 repo_feats: Optional[Tensor] = None,
+                 ):
         """
         args:
             target_tensor: torch.Tensor, the corresponding rating for <user, item> pair
         """
+        assert (len(repo_tensor) == len(lib_tensor) == len(target_tensor))
+        if repo_feats is not None:
+            assert (len(repo_feats) == len(repo_tensor))
+
         self.repo_tensor = repo_tensor
         self.lib_tensor = lib_tensor
         self.target_tensor = target_tensor
+        self.repo_feats = repo_feats
 
     def __getitem__(self, index):
-        return self.repo_tensor[index], self.lib_tensor[index], self.target_tensor[index]
+        if self.repo_feats is None:
+            return self.repo_tensor[index], self.lib_tensor[index], self.target_tensor[index]
+        else:
+            return (self.repo_tensor[index],
+                    self.lib_tensor[index],
+                    self.target_tensor[index],
+                    self.repo_feats[index])
 
     def __len__(self):
         return self.repo_tensor.size(0)
@@ -34,10 +50,14 @@ class LibRecommenderDM(LightningDataModule):
     """Datamodule responsible for serving dataset to be used in training of NCF model."""
 
     VAL_BATCH_SIZE = 512
+    FEATURE_NAMES = ['is_master_protected', 'n_all_issues', 'n_branches', 'n_closed_issues',
+                     'n_forks', 'n_milestones_all', 'n_milestones_closed', 'n_milestones_open',
+                     'n_open_issues', 'n_pr_all', 'n_pr_closed', 'n_pr_open', 'n_stars']
 
     def __init__(self, config: Dict):
         super().__init__()
 
+        self._use_repo_features = bool(config['manual_feat_dim'])
         self._num_negatives = config['num_negatives']
         self._batch_size = config['batch_size']
         self._num_workers = config['num_workers']
@@ -45,22 +65,23 @@ class LibRecommenderDM(LightningDataModule):
         self.train_ratings: Optional[RepoLibDataset] = None
         self.test_ratings: Optional[RepoLibDataset] = None
 
-        self.lib_index: Optional[ExtensionDtype] = None
-        self.repo_index: Optional[ExtensionDtype] = None
+        self.lib_index: Optional[np.ndarray] = None
+        self.repo_index: Optional[np.ndarray] = None
 
     def prepare_data(self, *args, **kwargs):
         pass
 
     def setup(self, stage: Optional[str] = None):
-        train_test_raw_data = load_train_test_interactions()
-        train_interactions, test_interactions, self.lib_index, self.repo_index = train_test_raw_data
+        repo_feats, train_interactions, test_interactions, self.repo_index, self.lib_index = \
+            load_train_test_interactions()
 
         self._log_dataset_stats(train_interactions, "Train")
         self._log_dataset_stats(test_interactions, "Test")
 
         negatives = self._sample_negatives(train_interactions)
-        self.train_ratings = self._build_dataset(train_interactions, negatives)
-        self.test_ratings = self._build_dataset(test_interactions, negatives)
+
+        self.train_ratings = self._build_dataset(train_interactions, negatives, repo_feats)
+        self.test_ratings = self._build_dataset(test_interactions, negatives, repo_feats)
 
     def train_dataloader(self) -> Any:
         return DataLoader(self.train_ratings, batch_size=self._batch_size, shuffle=True,
@@ -72,7 +93,8 @@ class LibRecommenderDM(LightningDataModule):
 
     def _build_dataset(self,
                        ratings: pd.DataFrame,
-                       negatives: pd.DataFrame) -> RepoLibDataset:
+                       negatives: pd.DataFrame,
+                       repo_feats: pd.DataFrame) -> RepoLibDataset:
         """Creates training data."""
         train_ratings = pd.merge(ratings, negatives[['full_name', 'negative_items']],
                                  on='full_name')
@@ -80,21 +102,26 @@ class LibRecommenderDM(LightningDataModule):
         train_ratings['negatives'] = train_ratings['negative_items'].apply(
             lambda x: random.sample(x, self._num_negatives))
 
-        users, items, ratings = [], [], []
+        repos, libs, ratings = [], [], []
         for _, row in train_ratings.iterrows():
-            users.append(int(row['full_name']))
-            items.append(int(row['repo_requirements']))
+            repos.append(int(row['full_name']))
+            libs.append(int(row['repo_requirements']))
             ratings.append(float(row['rating']))
             for i in range(self._num_negatives):
-                users.append(int(row['full_name']))
-                items.append(int(row['negatives'][i]))
+                repos.append(int(row['full_name']))
+                libs.append(int(row['negatives'][i]))
                 ratings.append(float(0))
 
-        return RepoLibDataset(
-            torch.tensor(users, dtype=torch.int),
-            torch.tensor(items, dtype=torch.int),
-            torch.tensor(ratings, dtype=torch.float),
-        )
+        repos = torch.tensor(repos, dtype=torch.int)
+        libs = torch.tensor(libs, dtype=torch.int)
+        ratings = torch.tensor(ratings, dtype=torch.float)
+
+        if self._use_repo_features:
+            feats = self._get_features_tensor(repo_feats, ratings)
+        else:
+            feats = None
+
+        return RepoLibDataset(repos, libs, ratings, feats)
 
     def _sample_negatives(self, ratings: pd.DataFrame) -> pd.DataFrame:
         """Returns all negative items & 100 sampled negative items (for evaluation purposes)."""
@@ -107,6 +134,16 @@ class LibRecommenderDM(LightningDataModule):
         interact_status['test_negatives'] = interact_status['negative_items'].apply(
             lambda x: random.sample(x, 99))
         return interact_status[['full_name', 'negative_items', 'test_negatives']]
+
+    def _get_features_tensor(self,
+                             repo_feats: pd.DataFrame,
+                             repos: torch.Tensor) -> torch.Tensor:
+        repo_feats = repo_feats.set_index('full_name')
+        repo_names = self.repo_index[repos.long()]
+        repo_feats = repo_feats.loc[repo_names, self.FEATURE_NAMES].values.astype(float)
+        repo_feats = torch.tensor(repo_feats, dtype=torch.float)
+        assert len(repo_feats) == len(repos)
+        return repo_feats
 
     @staticmethod
     def _log_dataset_stats(dataset: pd.DataFrame, name: str = ""):
