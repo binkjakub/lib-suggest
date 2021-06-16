@@ -8,8 +8,8 @@ def prepare_interactions():
     train_interactions = pd.read_csv(TRAIN_DS)
     test_interactions = pd.read_csv(TEST_DS)
 
-    train_negatives = sample_negatives(train_interactions, len(train_interactions), seed=1293)
-    test_negatives = sample_negatives(test_interactions, len(test_interactions), seed=1293)
+    train_negatives = sample_negatives(train_interactions, len(train_interactions)*4, seed=1293)
+    test_negatives = sample_negatives(test_interactions, len(test_interactions)*4, seed=1293)
 
     train_interactions['rating'] = 1
     train_negatives['rating'] = 0
