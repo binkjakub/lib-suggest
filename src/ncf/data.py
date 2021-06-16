@@ -9,6 +9,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
 
 from src.data.loader import load_train_test_interactions
+from src.feature_extraction.features import get_features_tensor
 
 
 class RepoLibDataset(Dataset):
@@ -50,9 +51,6 @@ class LibRecommenderDM(LightningDataModule):
     """Datamodule responsible for serving dataset to be used in training of NCF model."""
 
     VAL_BATCH_SIZE = 512
-    FEATURE_NAMES = ['is_master_protected', 'n_all_issues', 'n_branches', 'n_closed_issues',
-                     'n_forks', 'n_milestones_all', 'n_milestones_closed', 'n_milestones_open',
-                     'n_open_issues', 'n_pr_all', 'n_pr_closed', 'n_pr_open', 'n_stars']
 
     def __init__(self, config: Dict):
         super().__init__()
@@ -117,7 +115,7 @@ class LibRecommenderDM(LightningDataModule):
         ratings = torch.tensor(ratings, dtype=torch.float)
 
         if self._use_repo_features:
-            feats = self._get_features_tensor(repo_feats, ratings)
+            feats = get_features_tensor(self.repo_names, repo_feats, ratings)
         else:
             feats = None
 
@@ -134,16 +132,6 @@ class LibRecommenderDM(LightningDataModule):
         interact_status['test_negatives'] = interact_status['negative_items'].apply(
             lambda x: random.sample(x, 99))
         return interact_status[['full_name', 'negative_items', 'test_negatives']]
-
-    def _get_features_tensor(self,
-                             repo_feats: pd.DataFrame,
-                             repos: torch.Tensor) -> torch.Tensor:
-        repo_feats = repo_feats.set_index('full_name')
-        repo_names = self.repo_names[repos.long()]
-        repo_feats = repo_feats.loc[repo_names, self.FEATURE_NAMES].values.astype(float)
-        repo_feats = torch.tensor(repo_feats, dtype=torch.float)
-        assert len(repo_feats) == len(repos)
-        return repo_feats
 
     @staticmethod
     def _log_dataset_stats(dataset: pd.DataFrame, name: str = ""):
