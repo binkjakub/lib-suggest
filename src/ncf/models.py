@@ -37,13 +37,13 @@ class GMF(RecommenderSystem):
         super(GMF, self).__init__(config, *args, **kwargs)
 
         self.embedding_user = UserEmbedding(self.hparams.num_repos,
-                                            self.hparams.latent_dim_mf,
+                                            self.hparams.embedding_dim,
                                             self.hparams.get('manual_feat_dim'),
                                             self.hparams.get('manual_feat_combination_out_dim'))
         self.embedding_item = nn.Embedding(num_embeddings=self.hparams.num_libs + 1,
-                                           embedding_dim=self.hparams.latent_dim_mf)
+                                           embedding_dim=self.hparams.embedding_dim)
 
-        self.affine_output = nn.Linear(in_features=self.hparams.latent_dim_mf, out_features=1)
+        self.affine_output = nn.Linear(in_features=self.hparams.embedding_dim, out_features=1)
         self.logistic = nn.Sigmoid()
 
     def forward(self, user_indices, item_indices, user_features=None):
@@ -104,13 +104,13 @@ class NeuMF(RecommenderSystem):
         self._gmf = GMF(config, *args, **kwargs)
         self._mlp = MLP(config, *args, **kwargs)
 
-        predictive_factors = self.hparams.layers[-1] + self.hparams.latent_dim_mf
+        predictive_factors = self.hparams.layers[-1] + self.hparams.embedding_dim
         self.affine_output = nn.Linear(in_features=predictive_factors, out_features=1)
         self.logistic = nn.Sigmoid()
 
-    def forward(self, user_indices, item_indices):
-        mf_vector = self._gmf.forward_repr(user_indices, item_indices)
-        mlp_vector = self._mlp.forward_repr(user_indices, item_indices)
+    def forward(self, user_indices, item_indices, user_features=None):
+        mf_vector = self._gmf.forward_repr(user_indices, item_indices, user_features=user_features)
+        mlp_vector = self._mlp.forward_repr(user_indices, item_indices, user_features=user_features)
 
         vector = torch.cat([0.5 * mlp_vector, 0.5 * mf_vector], dim=-1)
 

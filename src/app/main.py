@@ -2,7 +2,7 @@ import os
 
 import streamlit as st
 
-from src.app.ncf_recommender import NCFRecommender
+from src.app.ncf_recommender import NCFEmbeddingRecommender
 from src.app.recommender import DummyRecommender, RecommenderCollection
 from src.data.crawling.github_crawler import GithubCrawler
 
@@ -13,7 +13,7 @@ n_recommendations = os.environ.get('N_RECOMMENDATIONS', 5)
 
 crawler = GithubCrawler(login_or_token=login_or_token, password=password)
 recommender = RecommenderCollection(crawler,
-                                    [NCFRecommender(checkpoint_path, n_recommendations),
+                                    [NCFEmbeddingRecommender(checkpoint_path, n_recommendations),
                                      DummyRecommender()])
 
 st.title("Lib-suggest")

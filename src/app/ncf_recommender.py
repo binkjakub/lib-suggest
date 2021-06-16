@@ -9,6 +9,8 @@ from src.data.loader import PathLike
 from src.feature_extraction.features import FEATURE_NAMES
 from src.ncf.models import MLP
 
+torch.autograd.set_grad_enabled(False)
+
 
 class NCFRecommender(Recommender):
     """Recommendation based on Neural Collaborative Filtering (NCF) model."""
@@ -41,13 +43,43 @@ class NCFRecommender(Recommender):
         top_recommended = self._get_lib_names(top_recommended)
         return top_recommended
 
-    def _get_repository_index(self, repository_name: str) -> int:
-        matching_repos = np.where(self.model.repo_names == repository_name)
-        if matching_repos[0]:
-            (repo_index, *_), *_ = matching_repos
-            return repo_index
-        else:
-            return self.model.repo_oov_index
+    def _get_repository_index(self, repository_name: str) -> Optional[int]:
+        return self.search_index(self.model.repo_names, repository_name)
+
+    def _get_lib_index(self, library_name: str) -> Optional[int]:
+        return self.search_index(self.model.lib_names, library_name)
 
     def _get_lib_names(self, library_index: list[int]) -> list[str]:
         return [self.model.lib_names[lib_idx] for lib_idx in library_index]
+
+    @staticmethod
+    def search_index(array: np.ndarray, item: Any) -> Optional[int]:
+        matching = np.where(array == item)
+        if matching[0]:
+            (repo_index, *_), *_ = matching
+            return repo_index
+        else:
+            return None
+
+
+class NCFEmbeddingRecommender(NCFRecommender):
+
+    @property
+    def lib_embeddings(self) -> torch.Tensor:
+        return self.model.embedding_item.weight
+
+    def recommend(self, repository: dict[str, Any]) -> list[str]:
+        current_libs = repository['repo_requirements']
+        libs_idx = [lib_idx for lib in current_libs
+                    if (lib_idx := self._get_lib_index(lib)) is not None]
+
+        embeddings = self.lib_embeddings
+        similarities = torch.abs(embeddings[libs_idx] @ embeddings.t()).flatten()
+        most_similar_idx = torch.argsort(similarities)
+        most_similar_idx = most_similar_idx.flip(0)
+        most_similar_idx = most_similar_idx % len(embeddings)
+        most_similar_idx = most_similar_idx.tolist()
+        most_similar_idx = [idx for idx in most_similar_idx if idx not in libs_idx]
+        most_similar_idx = most_similar_idx[:self._n_recommendation]
+
+        return self._get_lib_names(most_similar_idx)

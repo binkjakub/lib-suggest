@@ -20,15 +20,15 @@ from src.ncf.recommender import RecommenderSystem
 def run_ncf_training(log_dir: str, experiment_name: str, seed: int):
     config = {
         'model': 'mlp',
-        'embedding_dim': 16,
-        'manual_feat_dim': len(LibRecommenderDM.FEATURE_NAMES),
-        # 'manual_feat_dim': 0,
+        'embedding_dim': 8,
+        # 'manual_feat_dim': len(FEATURE_NAMES),
+        'manual_feat_dim': 0,
         'manual_feat_combination_out_dim': 0,
         'num_repos': 1016,
         'num_libs': 401,
-        'num_negatives': 4,
+        'num_negatives': 8,
         'batch_size': 128,
-        'num_workers': 0,
+        'num_workers': 8,
         'learning_rate': 1e-3,
         'max_epochs': 32,
         'k_eval': 5,
@@ -51,7 +51,7 @@ def run_ncf_training(log_dir: str, experiment_name: str, seed: int):
                                  monitor=monitor_metric,
                                  save_top_k=2)
 
-    experiment_name = f'{model_name}__{experiment_name}'
+    experiment_name = f"{experiment_name}__{model_name}__{config['layers']}"
     trainer = Trainer(
         max_epochs=config['max_epochs'],
         logger=_get_loggers(log_dir, experiment_name),
@@ -76,7 +76,7 @@ def _compute_dimensions(config: dict[str, Any]) -> dict[str, Any]:
     concat_dim = repo_embedding_dim + lib_embedding_dim
     config |= {
         'latent_dim_mf': None,
-        'layers': [concat_dim, 32, 8],
+        'layers': [concat_dim, 8],
     }
     return config
 
