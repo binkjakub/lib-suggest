@@ -77,3 +77,10 @@ class GithubCrawler:
                 print("Waiting 120 seconds...")
                 time.sleep(120)
         return retrieved_repos
+
+
+class MockedCrawler(GithubCrawler):
+    """Mocked crawler."""
+
+    def crawl_extract_repository(self, *args, **kwargs) -> dict[[str, Any]]:
+        return {}

@@ -12,7 +12,7 @@ class UserEmbedding(nn.Module):
                  manual_feat_dim: Optional[int] = None,
                  manual_feat_combination_out_dim: Optional[int] = None):
         super().__init__()
-        self.embedding_user = nn.Embedding(num_embeddings=num_users,
+        self.embedding_user = nn.Embedding(num_embeddings=num_users + 1,
                                            embedding_dim=embedding_dim)
 
         self.leverage_user_feats = bool(manual_feat_dim)
@@ -40,7 +40,7 @@ class GMF(RecommenderSystem):
                                             self.hparams.latent_dim_mf,
                                             self.hparams.get('manual_feat_dim'),
                                             self.hparams.get('manual_feat_combination_out_dim'))
-        self.embedding_item = nn.Embedding(num_embeddings=self.hparams.num_libs,
+        self.embedding_item = nn.Embedding(num_embeddings=self.hparams.num_libs + 1,
                                            embedding_dim=self.hparams.latent_dim_mf)
 
         self.affine_output = nn.Linear(in_features=self.hparams.latent_dim_mf, out_features=1)
@@ -75,8 +75,6 @@ class MLP(RecommenderSystem):
         self.fc_layers = nn.Sequential(*self._build_hidden_layers())
         self.affine_output = nn.Linear(in_features=self.hparams.layers[-1], out_features=1)
         self.logistic = nn.Sigmoid()
-
-        print(self.fc_layers)
 
     def forward(self, user_indices, item_indices, user_features=None):
         repr_vector = self.forward_repr(user_indices, item_indices, user_features=user_features)

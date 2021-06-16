@@ -24,6 +24,8 @@ class RecommenderSystem(LightningModule, ABC):
 
         self.repo_names = None
         self.lib_names = None
+        self.repo_oov_index = self.hparams.num_repos
+        self.lib_oov_index = self.hparams.num_libs
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
