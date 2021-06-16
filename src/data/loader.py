@@ -1,9 +1,14 @@
 import os
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
+import numpy as np
 import pandas as pd
+from pandas import CategoricalDtype
 
-from src.defaults import RAW_DATA
+from src.defaults import RAW_DATA, REPO_DS, TEST_DS, TRAIN_DS
+
+PathLike = Union[str, Path]
 
 
 def load_all_datasets(path: str = RAW_DATA,
@@ -33,3 +38,34 @@ def load_all_datasets(path: str = RAW_DATA,
     dataset = dataset.reset_index(drop=True)
 
     return dataset
+
+
+def load_train_test_interactions(train_path: PathLike = TRAIN_DS,
+                                 test_path: PathLike = TEST_DS,
+                                 repo_feats_path: PathLike = REPO_DS,
+                                 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame,
+                                            np.ndarray, np.ndarray]:
+    repo_feats = pd.read_csv(repo_feats_path)
+    train_interactions, test_interactions = pd.read_csv(train_path), pd.read_csv(test_path)
+
+    train_interactions['rating'] = 1
+    test_interactions['rating'] = 1
+
+    repo_dtype = CategoricalDtype(categories=test_interactions['full_name'].unique())
+    lib_dtype = CategoricalDtype(categories=train_interactions['repo_requirements'].unique())
+
+    repo_index = repo_dtype.categories.values
+    lib_index = lib_dtype.categories.values
+
+    def names_to_codes(df: pd.DataFrame):
+        df['full_name'] = df['full_name'].astype(repo_dtype).cat.codes
+        df['repo_requirements'] = df['repo_requirements'].astype(lib_dtype).cat.codes
+        return df
+
+    train_interactions = names_to_codes(train_interactions)
+    test_interactions = names_to_codes(test_interactions)
+
+    assert train_interactions.columns.tolist() == ['full_name', 'repo_requirements', 'rating']
+    assert test_interactions.columns.tolist() == ['full_name', 'repo_requirements', 'rating']
+
+    return repo_feats, train_interactions, test_interactions, repo_index, lib_index
