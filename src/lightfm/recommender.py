@@ -4,14 +4,14 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 import scipy
-from lightfm import LightFM
-from lightfm.data import Dataset
-from lightfm.evaluation import precision_at_k, recall_at_k
 from sklearn.metrics import ndcg_score
 from sklearn.preprocessing import KBinsDiscretizer
 
+from lightfm import LightFM
+from lightfm.data import Dataset
+from lightfm.evaluation import precision_at_k, recall_at_k
 from src.data.crawling.github_crawler import GithubCrawler
-from src.defaults import REPO_DS, TRAIN_DS, TEST_DS
+from src.defaults import REPO_DS, TEST_DS, TRAIN_DS
 
 NUM_FEATURES = ['is_master_protected', 'n_all_issues', 'n_branches', 'n_closed_issues', 'n_forks',
                 'n_milestones_all', 'n_milestones_closed', 'n_milestones_open',
