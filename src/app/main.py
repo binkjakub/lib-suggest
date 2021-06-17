@@ -1,5 +1,6 @@
 import os
 
+import pandas as pd
 import streamlit as st
 
 from src.app.knn_recommender import KNNRecommender
@@ -41,15 +42,11 @@ if repo_name:
         for r_name, r_result in recommendation.recommendation.items():
             st.markdown(f"`{r_name}`")
 
-            package_lines = []
+            package_rows = []
             for req in r_result:
-                other_users = popularity.get_repos_that_use(req, 5)
-                print(req)
-                print(other_users)
+                other_users = popularity.get_repos_that_use(req, 3)
                 other_users = ", ".join(other_users)
-                print(other_users)
-                package_line = f'{req} ({other_users})'
-                print(package_line)
-                package_lines.append(package_line)
+                package_row = {'Recommendation': req, 'Most popular usages': other_users}
+                package_rows.append(package_row)
 
-            st.code('\n'.join(package_lines))
+            st.table(pd.DataFrame(package_rows))
