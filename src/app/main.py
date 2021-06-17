@@ -2,10 +2,10 @@ import os
 
 import streamlit as st
 
+from src.app.knn_recommender import KNNRecommender
 from src.app.ncf_recommender import NCFRecommender
 from src.app.popularity import Popularity
 from src.app.recommender import DummyRecommender, RecommenderCollection
-from src.app.knn_recommender import KNNRecommender
 from src.data.crawling.github_crawler import GithubCrawler
 
 login_or_token = os.environ.get('GITHUB_TOKEN')

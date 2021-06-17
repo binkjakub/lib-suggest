@@ -1,8 +1,8 @@
-from typing import Optional, Any
+from typing import Any, Optional
 
 import pandas as pd
 from numpy.random import PCG64
-from surprise import Dataset, Reader, KNNBasic
+from surprise import Dataset, KNNBasic, Reader
 
 from src.app.recommender import Recommender, T
 from src.app.utils import get_top_n
