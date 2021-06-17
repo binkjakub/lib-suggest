@@ -17,7 +17,7 @@ n_recommendations = os.environ.get('N_RECOMMENDATIONS', 5)
 crawler = GithubCrawler(login_or_token=login_or_token, password=password)
 recommender = RecommenderCollection(crawler,
                                     [KNNRecommender(),
-                                     # NCFRecommender(checkpoint_path, n_recommendations),
+                                     NCFRecommender(checkpoint_path, n_recommendations),
                                      DummyRecommender()])
 
 popularity = Popularity()
