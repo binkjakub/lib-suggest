@@ -124,7 +124,7 @@ class LightFMModel:
         user_features = self.dataset.build_user_features(data)
         return user_features
 
-    def evaluate(self, test: Optional[pd.DataFrame], k: int = 5, k_ndcg: int = 10) -> dict:
+    def evaluate(self, test: Optional[pd.DataFrame], k: int = 5, k_ndcg: int = 5) -> dict:
         if test is None:
             test = self.test
         test_interactions, _ = self.dataset.build_interactions(
