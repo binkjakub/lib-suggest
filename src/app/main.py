@@ -5,6 +5,7 @@ import streamlit as st
 
 from src.app.knn_recommender import KNNRecommender
 from src.app.lightfm_recommender import LightFMRecommender
+
 from src.app.ncf_recommender import NCFRecommender
 from src.app.popularity import Popularity
 from src.app.recommender import DummyRecommender, RecommenderCollection
