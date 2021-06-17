@@ -4,10 +4,14 @@ import pandas as pd
 import streamlit as st
 
 from src.app.knn_recommender import KNNRecommender
+from src.app.lightfm_recommender import LightFMRecommender
 from src.app.ncf_recommender import NCFRecommender
 from src.app.popularity import Popularity
 from src.app.recommender import DummyRecommender, RecommenderCollection
 from src.data.crawling.github_crawler import GithubCrawler
+
+lightfm_params = {'user_features_type': None, 'num_epochs': 15, 'no_components': 50,
+                  'loss': 'warp', 'learning_schedule': 'adagrad'}
 
 login_or_token = os.environ.get('GITHUB_TOKEN')
 password = os.environ.get('GITHUB_TOKEN')
@@ -17,6 +21,8 @@ n_recommendations = os.environ.get('N_RECOMMENDATIONS', 5)
 crawler = GithubCrawler(login_or_token=login_or_token, password=password)
 recommender = RecommenderCollection(crawler,
                                     [KNNRecommender(),
+                                     LightFMRecommender(n_recommendations=n_recommendations,
+                                                        **lightfm_params),
                                      NCFRecommender(checkpoint_path, n_recommendations),
                                      DummyRecommender()])
 
