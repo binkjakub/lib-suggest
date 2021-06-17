@@ -11,3 +11,5 @@ DATASET_DIR = DVC_PATH / 'dataset'
 REPO_DS = DATASET_DIR / 'repo_features.csv'
 TRAIN_DS = DATASET_DIR / 'train_interaction.csv'
 TEST_DS = DATASET_DIR / 'test_interactions.csv'
+
+KNN_TRAIN = DVC_PATH / 'KNN_train.csv'

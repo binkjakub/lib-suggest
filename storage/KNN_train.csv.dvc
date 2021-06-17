@@ -1,0 +1,4 @@
+outs:
+- md5: 6ec4d215991ed79520ca038367c1491d
+  size: 2428520
+  path: KNN_train.csv
