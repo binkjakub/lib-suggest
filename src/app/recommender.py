@@ -8,7 +8,7 @@ from surprise import Dataset, KNNBasic, Reader
 
 from src.app.utils import get_top_n
 from src.data.crawling.github_crawler import GithubCrawler
-from src.dataset.prepare import prepare_interactions
+from src.defaults import KNN_TRAIN
 
 T = TypeVar('T')
 
@@ -61,10 +61,14 @@ class DummyRecommender(Recommender):
 
 
 class KNNRecommender(Recommender):
-    def __init__(self, crawler: GithubCrawler):
+    N_RECOMMENDATIONS = 5
+
+    def __init__(self,
+                 n_recommendations: int = N_RECOMMENDATIONS,
+                 crawler: Optional[GithubCrawler] = None):
         super().__init__(crawler)
-        # _, self.algo = surprise.dump.load(KNN_MODEL_PATH)
-        self.train, _ = prepare_interactions()
+        self.train = pd.read_csv(KNN_TRAIN)
+        self.n_recommendations = n_recommendations
 
     def sample_neg_packages(self, x: pd.DataFrame, n: int):
         generator = PCG64(12331)
@@ -83,7 +87,7 @@ class KNNRecommender(Recommender):
         x = pd.DataFrame(repository).explode('repo_requirements')[
             ['full_name', 'repo_requirements']]
         x['rating'] = 1
-        x_neg = self.sample_neg_packages(x, len(x))
+        x_neg = self.sample_neg_packages(x, len(x)*4)
         train = pd.concat([x, x_neg, self.train])
         trainset = Dataset.load_from_df(train, Reader(rating_scale=(0, 1))).build_full_trainset()
 
@@ -91,5 +95,5 @@ class KNNRecommender(Recommender):
         algo.fit(trainset)
         testset = trainset.build_anti_testset()
         predictions = algo.test(testset)
-        top = get_top_n(predictions)[repository['full_name']]
+        top = get_top_n(predictions, self.n_recommendations)[repository['full_name']]
         return [package for package, _ in top]
